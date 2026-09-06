@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Fixture YAML API
+  version: v2
+servers:
+  - url: https://yaml.example.test
+paths:
+  /orders:
+    get: {}
+    put: {}

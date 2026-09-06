@@ -1,0 +1,10 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Fixture API", "version": "v1"},
+  "servers": [{"url": "https://fixture.example.test/api"}],
+  "paths": {
+    "/users": {"get": {}, "post": {}},
+    "/users/{id}": {"get": {}, "delete": {}},
+    "/orders": {"patch": {}}
+  }
+}
