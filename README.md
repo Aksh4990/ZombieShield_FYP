@@ -1,6 +1,6 @@
 # ZombieShield
 
-ZombieShield is an API security platform foundation. This milestone provides a working API inventory service and a small UI for viewing it. It deliberately does not include discovery, lifecycle classification logic, risk scoring, remediation, machine learning, or external security integrations.
+ZombieShield is an API security platform that discovers APIs, maintains a unified inventory, classifies lifecycle state, and assesses explainable security risk. The current implementation covers Milestones 1-5; threat intelligence, threat simulation, and the decision engine remain future work.
 
 ## Architecture
 
@@ -26,7 +26,7 @@ Stop the stack with `docker compose down`. Add `-v` only if you intentionally wa
 
 - `GET /health` returns `{ "status": "healthy" }`.
 - `POST /apis` creates an inventory record.
-- `GET /apis` returns all inventory records.
+- `GET /apis` returns all inventory records and can filter by lifecycle state.
 - `GET /apis/{id}` returns one inventory record or a 404 response.
 
 ## Discovery (Milestone 2)
@@ -36,6 +36,28 @@ Stop the stack with `docker compose down`. Add `-v` only if you intentionally wa
 - `POST /discovery/runtime-log` parses simple HTTP access-log lines.
 
 Git discovery is intentionally restricted to `discovery-repositories/`, mounted read-only in the backend container at `/workspace/repositories`. Submit paths relative to that directory (for example, `sample-api`); absolute paths and directory traversal are rejected. Copy a local source directory into that project folder when demonstrating discovery. The included `sample-api` directory is demonstration-only source.
+
+## Lifecycle classification (Milestone 4)
+
+- `POST /classification/run` evaluates every inventory record as `ACTIVE`, `DEPRECATED`, `ZOMBIE`, or `DECOMMISSIONED` using source evidence, flags, and recent runtime activity.
+
+## Risk assessment (Milestone 5)
+
+- `POST /apis/{id}/risk-assessment` assesses one inventory API.
+- `POST /risk/assessments/run` assesses all inventory APIs.
+
+Every assessment stores a 0-100 score, `LOW`/`MEDIUM`/`HIGH`/`CRITICAL` level, extracted evidence, findings, explanation, and timestamp. Scores combine explainable inventory rules (60%) with a `GradientBoostingClassifier` result (40%). The model is trained only on reproducible synthetic inventory scenarios; it is not production security data and does not claim real-world accuracy.
+
+Authentication, TLS, rate limiting, and PII evidence are not currently collected. They are stored as explicit `unknown` evidence and are never treated as proof that a security control is missing.
+
+## Threat intelligence (Milestone 6)
+
+- `POST /threat-intelligence/advisories` stores a source-attributed advisory.
+- `POST /threat-intelligence/correlate/run` correlates advisories against all APIs.
+- `POST /apis/{id}/threat-intelligence/correlate` correlates one API.
+- `GET /threat-intelligence/advisories`, `GET /threat-intelligence/findings`, and `GET /apis/{id}/threat-findings` expose evidence and matches.
+
+Correlation requires an explicitly supplied API component name/version and an exact affected version in a source-attributed advisory. ZombieShield does not populate sample CVEs, infer version ranges, or claim external-feed coverage. Correlated findings increment the API threat finding count and are included in the next risk assessment.
 
 Example create request:
 

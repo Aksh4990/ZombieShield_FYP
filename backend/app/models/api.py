@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Index, JSON, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, Float, Index, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,6 +14,13 @@ class LifecycleState(str, enum.Enum):
     DEPRECATED = "DEPRECATED"
     ZOMBIE = "ZOMBIE"
     DECOMMISSIONED = "DECOMMISSIONED"
+
+
+class RiskLevel(str, enum.Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 
 def utc_now() -> datetime:
@@ -55,6 +62,15 @@ class API(Base):
     )
     classification_reason: Mapped[str | None] = mapped_column(String(1000))
     classified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    risk_score: Mapped[float | None] = mapped_column(Float)
+    risk_level: Mapped[str | None] = mapped_column(String(20))
+    risk_features: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    risk_findings: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    risk_explanation: Mapped[str | None] = mapped_column(String(2000))
+    risk_assessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    technology_components: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    threat_finding_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    simulation_finding_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now

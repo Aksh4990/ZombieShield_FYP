@@ -1,4 +1,4 @@
-import type { ApiInventoryItem, DiscoveryResponse } from './types'
+import type { ApiInventoryItem, DiscoveryResponse, RiskAssessmentRunResponse } from './types'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -27,3 +27,4 @@ export const runOpenApiDiscovery = (body: object) => post<DiscoveryResponse>('/d
 export const runGitDiscovery = (body: object) => post<DiscoveryResponse>('/discovery/git', body)
 export const runRuntimeLogDiscovery = (body: object) => post<DiscoveryResponse>('/discovery/runtime-log', body)
 export const runClassification = () => post<{ active: number; deprecated: number; zombie: number; decommissioned: number }>('/classification/run', {})
+export const runRiskAssessments = () => post<RiskAssessmentRunResponse>('/risk/assessments/run', {})

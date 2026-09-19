@@ -20,10 +20,19 @@ async def lifespan(_: FastAPI):
             connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS is_removed_from_supported_surface BOOLEAN NOT NULL DEFAULT FALSE")
             connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS classification_reason VARCHAR(1000)")
             connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS classified_at TIMESTAMPTZ")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS risk_score DOUBLE PRECISION")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20)")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS risk_features JSONB NOT NULL DEFAULT '{}'::jsonb")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS risk_findings JSONB NOT NULL DEFAULT '[]'::jsonb")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS risk_explanation VARCHAR(2000)")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS risk_assessed_at TIMESTAMPTZ")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS technology_components JSONB NOT NULL DEFAULT '[]'::jsonb")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS threat_finding_count INTEGER NOT NULL DEFAULT 0")
+            connection.exec_driver_sql("ALTER TABLE IF EXISTS apis ADD COLUMN IF NOT EXISTS simulation_finding_count INTEGER NOT NULL DEFAULT 0")
     Base.metadata.create_all(bind=engine)
     if engine.dialect.name == "postgresql":
         with engine.begin() as connection:
-            connection.exec_driver_sql("UPDATE apis SET sources = jsonb_build_array(source) WHERE sources = '[]'::jsonb")
+            connection.exec_driver_sql("UPDATE apis SET sources = jsonb_build_array(source) WHERE sources::jsonb = '[]'::jsonb")
             connection.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_apis_canonical_key ON apis (canonical_key) WHERE canonical_key IS NOT NULL")
     yield
 

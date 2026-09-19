@@ -22,5 +22,5 @@ export default function App() {
 
   useEffect(() => { void refresh() }, [])
 
-  return <div className="app-shell"><Sidebar page={page} onNavigate={setPage} /><main>{page === 'dashboard' ? <Dashboard health={health} inventoryCount={apis.length} error={error} /> : page === 'inventory' ? <ApiInventory apis={apis} loading={loading} error={error} /> : <Discovery onComplete={refresh} />}</main></div>
+  return <div className="app-shell"><Sidebar page={page} onNavigate={setPage} /><main>{page === 'dashboard' ? <Dashboard health={health} apis={apis} error={error} /> : page === 'inventory' ? <ApiInventory apis={apis} loading={loading} error={error} /> : <Discovery onComplete={refresh} />}</main></div>
 }

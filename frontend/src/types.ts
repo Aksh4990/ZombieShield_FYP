@@ -20,6 +20,15 @@ export interface ApiInventoryItem {
   lifecycle_state: LifecycleState
   classification_reason: string | null
   classified_at: string | null
+  risk_score: number | null
+  risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null
+  risk_features: Record<string, unknown>
+  risk_findings: string[]
+  risk_explanation: string | null
+  risk_assessed_at: string | null
+  technology_components: { name: string; version: string; evidence_source: string }[]
+  threat_finding_count: number
+  simulation_finding_count: number
   created_at: string
   updated_at: string
 }
@@ -29,4 +38,14 @@ export interface DiscoveryResponse {
   discovered_count: number
   added_count: number
   records: ApiInventoryItem[]
+}
+
+export interface RiskAssessmentRunResponse {
+  total_assessed: number
+  low: number
+  medium: number
+  high: number
+  critical: number
+  model_training_data: string
+  results: { api: ApiInventoryItem; assessed_at: string }[]
 }
