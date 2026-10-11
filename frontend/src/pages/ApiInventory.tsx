@@ -1,66 +1,26 @@
 import type { ApiInventoryItem } from '../types'
 import { runClassification, runRiskAssessments } from '../api'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
-interface ApiInventoryProps {
-  apis: ApiInventoryItem[]
-  loading: boolean
-  error: string | null
-}
+interface ApiInventoryProps { apis: ApiInventoryItem[]; loading: boolean; error: string | null }
+
+const sourceLabel = (api: ApiInventoryItem, source: string) => api.sources.includes(source) ? 'Evidence present' : 'No evidence'
 
 export function ApiInventory({ apis, loading, error }: ApiInventoryProps) {
-  const [summary, setSummary] = useState<string | null>(null)
-  const [riskSummary, setRiskSummary] = useState<string | null>(null)
+  const [selected, setSelected] = useState<ApiInventoryItem | null>(null)
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState('ALL')
   const [running, setRunning] = useState(false)
   const [assessing, setAssessing] = useState(false)
-
-  const classify = async () => {
-    setRunning(true)
-    try {
-      const result = await runClassification()
-      setSummary(`Active ${result.active} | Deprecated ${result.deprecated} | Zombie ${result.zombie} | Decommissioned ${result.decommissioned}`)
-      window.location.reload()
-    } finally { setRunning(false) }
-  }
-
-  const assessRisk = async () => {
-    setAssessing(true)
-    try {
-      const result = await runRiskAssessments()
-      setRiskSummary(`Assessed ${result.total_assessed}: Low ${result.low} | Medium ${result.medium} | High ${result.high} | Critical ${result.critical}. ${result.model_training_data}`)
-      window.location.reload()
-    } finally { setAssessing(false) }
-  }
-
-  return (
-    <section>
-      <p className="eyebrow">Discovery inventory</p>
-      <h1>API Inventory</h1>
-      <div className="actions">
-        <button className="submit" onClick={classify} disabled={running}>{running ? 'Classifying...' : 'Run lifecycle classification'}</button>
-        <button className="submit" onClick={assessRisk} disabled={assessing}>{assessing ? 'Assessing risk...' : 'Run risk assessment'}</button>
-      </div>
-      {summary && <p>{summary}</p>}
-      {riskSummary && <p>{riskSummary}</p>}
-      {loading && <p>Loading inventory...</p>}
-      {error && <p className="error" role="alert">Unable to load API inventory: {error}</p>}
-      {!loading && !error && (
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Service</th><th>Method</th><th>Endpoint</th><th>Version</th><th>Sources</th><th>Lifecycle / reason</th><th>Risk / findings</th></tr></thead>
-            <tbody>
-              {apis.length === 0 ? <tr><td colSpan={7} className="empty">No API inventory records yet.</td></tr> : apis.map((api) => (
-                <tr key={api.id}>
-                  <td><strong>{api.service_name}</strong><br /><small>{api.host}</small></td>
-                  <td><code>{api.http_method}</code></td><td><code>{api.endpoint_path}</code></td><td>{api.version}</td><td>{api.sources.join(', ')}</td>
-                  <td><span className={`state ${api.lifecycle_state.toLowerCase()}`}>{api.lifecycle_state}</span><br /><small>{api.classification_reason ?? 'Not classified yet'}</small></td>
-                  <td>{api.risk_score === null ? <small>Not assessed yet</small> : <><span className={`state risk-${api.risk_level?.toLowerCase()}`}>{api.risk_level} {api.risk_score.toFixed(0)}/100</span><br /><small>{api.risk_findings.slice(0, 2).join(' ')}</small></>}{api.threat_finding_count > 0 && <><br /><small className="threat-count">Threat intelligence findings: {api.threat_finding_count}</small></>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  )
+  const visible = useMemo(() => apis.filter((api) => (filter === 'ALL' || api.lifecycle_state === filter) && `${api.service_name} ${api.endpoint_path} ${api.http_method}`.toLowerCase().includes(query.toLowerCase())), [apis, filter, query])
+  const classify = async () => { setRunning(true); try { await runClassification(); window.location.reload() } finally { setRunning(false) } }
+  const assess = async () => { setAssessing(true); try { await runRiskAssessments(); window.location.reload() } finally { setAssessing(false) } }
+  return <section>
+    <p className="eyebrow">Evidence-led inventory</p><h1>API Inventory</h1><p className="page-lead">Select any API to explain its evidence, lifecycle state, and risk contributors.</p>
+    <div className="actions"><button className="submit" onClick={classify} disabled={running}>{running ? 'Classifying...' : 'Run lifecycle classification'}</button><button className="secondary-button" onClick={assess} disabled={assessing}>{assessing ? 'Assessing...' : 'Run risk assessment'}</button></div>
+    <div className="inventory-toolbar"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search endpoint, service, or method" /><select value={filter} onChange={(e) => setFilter(e.target.value)}><option value="ALL">All lifecycle states</option><option value="ACTIVE">Active</option><option value="ZOMBIE">Zombie</option><option value="DEPRECATED">Deprecated</option><option value="DECOMMISSIONED">Decommissioned</option></select><span>{visible.length} APIs shown</span></div>
+    {loading && <p>Loading inventory...</p>}{error && <p className="error">Unable to load API inventory: {error}</p>}
+    {!loading && !error && <div className="inventory-grid">{visible.length === 0 ? <p className="empty">No matching API inventory records.</p> : visible.map((api) => <button className={`api-card ${api.lifecycle_state === 'ZOMBIE' ? 'zombie-card' : ''}`} key={api.id} onClick={() => setSelected(api)}><div className="api-card-top"><span className={`method method-${api.http_method.toLowerCase()}`}>{api.http_method}</span><span className={`state ${api.lifecycle_state.toLowerCase()}`}>{api.lifecycle_state}</span></div><code>{api.endpoint_path}</code><strong>{api.service_name}</strong><small>{api.host} · {api.version}</small><div className="api-card-footer"><span>{api.sources.length} evidence source{api.sources.length === 1 ? '' : 's'}</span>{api.risk_score === null ? <span>Not assessed</span> : <span className={`risk-text risk-${api.risk_level?.toLowerCase()}`}>{api.risk_level} {api.risk_score.toFixed(0)}/100</span>}</div></button>)}</div>}
+    {selected && <div className="modal-backdrop" onClick={() => setSelected(null)}><aside className="detail-drawer" onClick={(e) => e.stopPropagation()}><button className="close-button" onClick={() => setSelected(null)} aria-label="Close details">×</button><p className="eyebrow">API security profile</p><div className="detail-title"><span className={`method method-${selected.http_method.toLowerCase()}`}>{selected.http_method}</span><code>{selected.endpoint_path}</code></div><p className="detail-meta">{selected.service_name} · {selected.host} · {selected.version}</p><div className="detail-score"><span>Final risk score</span><strong className={`risk-${selected.risk_level?.toLowerCase()}`}>{selected.risk_score === null ? '—' : selected.risk_score.toFixed(0)}</strong><span className={`state risk-${selected.risk_level?.toLowerCase()}`}>{selected.risk_level ?? 'NOT ASSESSED'}</span></div><h2>Lifecycle</h2><span className={`state ${selected.lifecycle_state.toLowerCase()}`}>{selected.lifecycle_state}</span><p>{selected.classification_reason ?? 'Lifecycle classification has not run yet.'}</p><h2>Evidence</h2><div className="evidence-list">{[['openapi', 'OpenAPI'], ['git', 'Source code'], ['runtime_log', 'Runtime logs']].map(([key, label]) => <div key={key}><span className={selected.sources.includes(key) ? 'evidence-yes' : 'evidence-no'}>{selected.sources.includes(key) ? '✓' : '×'}</span><strong>{label}</strong><small>{sourceLabel(selected, key)}</small></div>)}</div><h2>Risk contributors</h2><div className="finding-list">{selected.risk_findings.length ? selected.risk_findings.map((finding) => <p key={finding}>{finding}</p>) : <p>No risk assessment findings stored yet.</p>}</div><h2>Operational evidence</h2><p>Threat findings: <strong>{selected.threat_finding_count}</strong> · Simulation findings: <strong>{selected.simulation_finding_count}</strong></p><p className="muted">Decision recommendations are generated by the backend decision run and are intentionally not invented in this view.</p></aside></div>}
+  </section>
 }
