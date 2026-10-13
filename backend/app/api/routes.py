@@ -24,6 +24,10 @@ from app.services import threat_intelligence
 from app.services import simulation
 from app.services import decision
 from app.schemas.decision import DecisionRead, DecisionRunResponse
+from app.schemas.model_evaluation import ModelEvaluationResponse
+from app.schemas.remediation import RemediationResponse
+from app.services.model_evaluation import evaluate_models
+from app.services import remediation
 
 router = APIRouter()
 
@@ -53,6 +57,19 @@ def get_api(api_id: uuid.UUID, db: Session = Depends(get_db)) -> APIRead:
     if api is None:
         raise HTTPException(status_code=404, detail="API inventory record not found")
     return api
+
+
+@router.get("/apis/{api_id}/recommendations", response_model=RemediationResponse)
+def get_api_recommendations(api_id: uuid.UUID, db: Session = Depends(get_db)) -> RemediationResponse:
+    """Return explainable advisory actions based only on persisted API evidence."""
+    api = api_inventory.get_api(db, api_id)
+    if api is None:
+        raise HTTPException(status_code=404, detail="API inventory record not found")
+    return RemediationResponse(
+        api_id=api.id,
+        recommendations=remediation.build_recommendations(db, api),
+        limitations=remediation.limitations(),
+    )
 
 
 def discovery_response(source: str, results, db: Session) -> DiscoveryResponse:
@@ -138,6 +155,12 @@ def run_risk_assessments(db: Session = Depends(get_db)) -> RiskAssessmentRunResp
         model_training_data=TRAINING_DATA_DESCRIPTION,
         results=results,
     )
+
+
+@router.get("/risk/models/evaluate", response_model=ModelEvaluationResponse)
+def evaluate_risk_models() -> ModelEvaluationResponse:
+    """Compare candidate models without changing the live Gradient Boosting scorer."""
+    return ModelEvaluationResponse(**evaluate_models())
 
 
 @router.post("/threat-intelligence/advisories", response_model=ThreatAdvisoryRead, status_code=status.HTTP_201_CREATED)

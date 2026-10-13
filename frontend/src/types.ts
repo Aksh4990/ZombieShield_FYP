@@ -49,3 +49,42 @@ export interface RiskAssessmentRunResponse {
   model_training_data: string
   results: { api: ApiInventoryItem; assessed_at: string }[]
 }
+
+export interface RemediationRecommendation {
+  key: string
+  priority: 'IMMEDIATE' | 'HIGH' | 'MEDIUM' | 'LOW'
+  title: string
+  action: string
+  rationale: string
+  evidence: string[]
+  validation: string
+  reference_url: string | null
+}
+
+export interface RemediationResponse {
+  api_id: string
+  recommendations: RemediationRecommendation[]
+  limitations: string[]
+}
+
+export interface ModelMetric {
+  name: string
+  accuracy: number
+  precision_macro: number
+  recall_macro: number
+  f1_macro: number
+  training_time_ms: number
+  selected_for_live_scoring: boolean
+  confusion_matrix: number[][]
+}
+
+export interface ModelEvaluationResponse {
+  dataset_type: string
+  dataset_notice: string
+  total_scenarios: number
+  train_scenarios: number
+  test_scenarios: number
+  random_state: number
+  metrics: ModelMetric[]
+  sample_scenarios: { risk_label: string; features: Record<string, number> }[]
+}
